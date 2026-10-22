@@ -1,0 +1,49 @@
+ALFA FLOW — third-party notices
+Дата проверки: 22 октября 2026.
+
+Backend
+- Go 1.27.3 — https://go.dev/dl/ — BSD-3-Clause.
+- github.com/jackc/pgx/v5 v5.9.2 — https://github.com/jackc/pgx — MIT.
+- PostgreSQL 17.6 Alpine image — https://www.postgresql.org/ — PostgreSQL License.
+- Alpine 3.22.1 — https://alpinelinux.org/ — MIT.
+
+Frontend runtime
+- React 19.1.1 / React DOM 19.1.1 — https://github.com/facebook/react — MIT.
+- React Router DOM 7.18.4 — https://github.com/remix-run/react-router — MIT.
+- @tanstack/react-query 5.85.3 — https://github.com/TanStack/query — MIT.
+- Recharts 3.1.2 — https://github.com/recharts/recharts — MIT.
+- Lucide React 0.541.0 — https://lucide.dev/ — ISC.
+- Radix Slot 1.2.3 — https://www.radix-ui.com/primitives — MIT.
+- React Hook Form 7.62.0 — https://github.com/react-hook-form/react-hook-form — MIT.
+- Zod 4.0.17 — https://github.com/colinhacks/zod — MIT.
+- class-variance-authority 0.7.1 — https://github.com/joe-bell/cva — Apache-2.0.
+- clsx 2.1.1 — https://github.com/lukeed/clsx — MIT.
+- tailwind-merge 3.3.1 — https://github.com/dcastil/tailwind-merge — MIT.
+- Tailwind CSS 4.1.12 / @tailwindcss/vite 4.1.12 — https://tailwindcss.com/ — MIT.
+- Vite 7.3.7 / @vitejs/plugin-react 5.0.1 — https://vite.dev/ — MIT.
+- Onest font package 5.2.6 — https://github.com/simpals/onest — SIL Open Font License 1.1.
+
+Tooling
+- TypeScript 5.9.2 — https://github.com/microsoft/TypeScript — Apache-2.0.
+- ESLint 9.33.0 and typescript-eslint 8.72.0 — https://eslint.org/ / https://typescript-eslint.io/ — MIT.
+- Vitest 4.1.12 — https://vitest.dev/ — MIT.
+- Playwright Test 1.64.1 / Chromium browser build — https://playwright.dev/ — Apache-2.0 / Chromium licenses.
+- @axe-core/playwright 4.10.2 — https://github.com/dequelabs/axe-core-npm — MPL-2.0.
+- @apidevtools/swagger-parser 13.1.0 — https://github.com/APIDevTools/swagger-parser — MIT.
+- swagger-ui-dist 5.34.0 — https://github.com/swagger-api/swagger-ui — Apache-2.0.
+- Nginx 1.28.0 Alpine image — https://nginx.org/ — 2-clause BSD.
+- Node 24.7.0 Alpine image — https://nodejs.org/ — MIT / Alpine MIT.
+
+No model/data is bundled. `AI_ENABLED=false`; no external LLM/OCR/model weights.
+No real FNS, BKI, registry, payment, signing or disbursement integration exists.
+Simulated adapters are local deterministic Go code: registry, BKI, authority, signing, disbursement.
+All profiles/transactions/documents are generated in `SeedCompanies()` with seed=2026.
+
+Full transitive inventory: docs/DEPENDENCY_LICENSES.json (281 installed npm packages).
+Copyright/license/NOTICE texts from installed npm and Go modules:
+docs/DEPENDENCY_LICENSE_TEXTS.txt (283 text files collected).
+Prettier 3.6.2 — https://prettier.io/ — MIT.
+Go transitive modules: pgpassfile 1.0.0 (MIT), pgservicefile 0.0.0-20240606120523-5a60cdf6a761
+(MIT), puddle/v2 2.2.2 (MIT), x/sync 0.22.0 and x/text 0.41.0 (BSD-3-Clause).
+Dependencies are locked by web/pnpm-lock.yaml and backend/go.sum. OS image packages inherit
+the source distribution's notices. Legal review is still necessary before a real banking release.

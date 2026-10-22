@@ -1,0 +1,3 @@
+date,amount,currency,direction,category,description
+2026-09-10,12345.67,RUB,credit,sales,Синтетическая дополнительная выручка
+2026-09-15,5000.00,RUB,debit,payroll,Синтетическая выплата

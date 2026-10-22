@@ -1,0 +1,1599 @@
+{
+  "info": {
+    "name": "ALFA FLOW — синтетический кредитный конвейер",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Сначала папка A E2E. Cookie jar включён. Все данные синтетические. Полный API: для банка сменить persona на BANK, для reset ADMIN. Не отправляйте пустые примеры request-info/decide без нужного состояния и полей из OpenAPI."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8088"
+    },
+    {
+      "key": "csrf_token",
+      "value": ""
+    },
+    {
+      "key": "application_id",
+      "value": ""
+    },
+    {
+      "key": "offer_id",
+      "value": ""
+    },
+    {
+      "key": "version",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "A — E2E login → submit → accept → sign → issued",
+      "item": [
+        {
+          "name": "POST /demo/session — Демонстрационный вход (только DEMO_MODE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/demo/session",
+            "description": "Демонстрационный вход (только DEMO_MODE)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"persona\": \"A_APPROVED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications — Создать черновик",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications",
+            "description": "Создать черновик",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"WORKING_CAPITAL_LOAN\",\n  \"purpose\": \"working_capital\",\n  \"amount_kopeks\": 100000000,\n  \"term_months\": 24,\n  \"declared_revenue_kopeks\": 300000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/{id}/submit — Отправить и выполнить pipeline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/submit",
+            "description": "Отправить и выполнить pipeline",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{version}},\n  \"consent\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/{id}/offers/{offerId}/accept — Принять только активное предложение",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/offers/{{offer_id}}/accept",
+            "description": "Принять только активное предложение",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{version}},\n  \"consent\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/{id}/sign-simulated — Согласие и автоматическая имитация выдачи",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/sign-simulated",
+            "description": "Согласие и автоматическая имитация выдачи",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{version}},\n  \"consent\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Все реальные API routes (сверять предусловия в Swagger)",
+      "item": [
+        {
+          "name": "GET /applications — Собственные заявки",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications",
+            "description": "Собственные заявки"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications — Создать черновик",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications",
+            "description": "Создать черновик",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"WORKING_CAPITAL_LOAN\",\n  \"purpose\": \"working_capital\",\n  \"amount_kopeks\": 100000000,\n  \"term_months\": 24,\n  \"declared_revenue_kopeks\": 300000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications/{id} — Карточка; внутренние данные скрыты у клиента",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}",
+            "description": "Карточка; внутренние данные скрыты у клиента"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PATCH /applications/{id} — Сохранить только черновик",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}",
+            "description": "Сохранить только черновик",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications/{id}/decision-passport — Исторические решения; RBAC-проекция",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/decision-passport",
+            "description": "Исторические решения; RBAC-проекция"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/{id}/documents — Прикрепить демо-документ / метаданные до 2 МБ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/documents",
+            "description": "Прикрепить демо-документ / метаданные до 2 МБ",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications/{id}/offers — Неизменяемые версии предложений",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/offers",
+            "description": "Неизменяемые версии предложений"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/{id}/offers/{offerId}/accept — Принять только активное предложение",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/offers/{{offer_id}}/accept",
+            "description": "Принять только активное предложение",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{version}},\n  \"consent\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/{id}/provide-info — Ответить на конкретный запрос",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/provide-info",
+            "description": "Ответить на конкретный запрос",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/{id}/request-offer — Создать новое предложение без изменения исходного запроса",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/request-offer",
+            "description": "Создать новое предложение без изменения исходного запроса",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/{id}/sign-simulated — Согласие и автоматическая имитация выдачи",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/sign-simulated",
+            "description": "Согласие и автоматическая имитация выдачи",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{version}},\n  \"consent\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/{id}/simulations — What-if без изменения заявки; денежные факты из snapshot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/simulations",
+            "description": "What-if без изменения заявки; денежные факты из snapshot",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"WORKING_CAPITAL_LOAN\",\n  \"purpose\": \"working_capital\",\n  \"amount_kopeks\": 100000000,\n  \"term_months\": 24,\n  \"declared_revenue_kopeks\": 300000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /applications/{id}/submit — Отправить и выполнить pipeline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/submit",
+            "description": "Отправить и выполнить pipeline",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{version}},\n  \"consent\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /applications/{id}/timeline — Хронология",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/applications/{{application_id}}/timeline",
+            "description": "Хронология"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /bank/applications — Очередь с фильтром и пагинацией",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bank/applications",
+            "description": "Очередь с фильтром и пагинацией"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /bank/applications/{id}/audit — Append-only аудит",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bank/applications/{{application_id}}/audit",
+            "description": "Append-only аудит"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /bank/applications/{id}/checks — Артефакты mock-проверок",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bank/applications/{{application_id}}/checks",
+            "description": "Артефакты mock-проверок"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /bank/applications/{id}/decide — Мотивированное ручное решение без обхода hard-stop",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bank/applications/{{application_id}}/decide",
+            "description": "Мотивированное ручное решение без обхода hard-stop",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /bank/applications/{id}/decision-passport/replay — Replay исходного snapshot и версии",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bank/applications/{{application_id}}/decision-passport/replay",
+            "description": "Replay исходного snapshot и версии",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /bank/applications/{id}/request-info — Запрос сведений внутри платформы",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/bank/applications/{{application_id}}/request-info",
+            "description": "Запрос сведений внутри платформы",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /companies/me — Предзаполненный профиль компании",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/companies/me",
+            "description": "Предзаполненный профиль компании"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /companies/me/cashflow — История операций и агрегаты",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/companies/me/cashflow",
+            "description": "История операций и агрегаты"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /companies/me/cashflow/forecast — Прогноз без ML",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/companies/me/cashflow/forecast",
+            "description": "Прогноз без ML",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"horizon_days\": 90\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /companies/me/cashflow/import — Импорт UTF-8 CSV (до 1 МБ), исторические snapshots не меняются",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/companies/me/cashflow/import",
+            "description": "Импорт UTF-8 CSV (до 1 МБ), исторические snapshots не меняются",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /demo/personas — Синтетические профили",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/demo/personas",
+            "description": "Синтетические профили"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /demo/reset — Явный сброс только синтетики",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/demo/reset",
+            "description": "Явный сброс только синтетики",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /demo/session — Демонстрационный вход (только DEMO_MODE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/demo/session",
+            "description": "Демонстрационный вход (только DEMO_MODE)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"persona\": \"A_APPROVED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /health/live — Liveness",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/health/live",
+            "description": "Liveness"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /health/ready — Readiness PostgreSQL",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/health/ready",
+            "description": "Readiness PostgreSQL"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /loan-products — Гипотетические продукты 2026",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/loan-products",
+            "description": "Гипотетические продукты 2026"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /me — Сеанс и CSRF token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me",
+            "description": "Сеанс и CSRF token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /metrics — Счётчики демо",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/metrics",
+            "description": "Счётчики демо"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let d;try{d=pm.response.json()}catch(e){}",
+                  "pm.test('Без server error',()=>pm.expect(pm.response.code).to.be.below(500));",
+                  "if(d?.csrf_token)pm.collectionVariables.set('csrf_token',d.csrf_token);",
+                  "if(d?.id&&d?.status){pm.collectionVariables.set('application_id',d.id);pm.collectionVariables.set('version',d.version)}",
+                  "if(d?.active_offer_id)pm.collectionVariables.set('offer_id',d.active_offer_id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
