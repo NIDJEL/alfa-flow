@@ -1,5 +1,58 @@
 # Матрица приёмки / фактический прогон
 
+## Проверка перед публикацией и установка — 23 октября 2026
+
+- Изолированный Compose-проект `alfa-flow-qa`, новый PostgreSQL volume, web на
+  `localhost:18089`: **11 E2E passed / 35,7 с**. Основной volume не сбрасывался.
+- Проверены desktop 1440×900 / 1280×800 и mobile 390×844; сравнение What-if,
+  черновик, помощь, клавиатура, баланс, клиентский и банковский путь.
+- `go vet ./...` и Go-тесты с `TEST_DATABASE_URL`: PASS, включая 10 PostgreSQL
+  integration-подсценариев. Frontend lint/typecheck, **6 unit tests**, build: PASS.
+- OpenAPI: 30 путей, 24 реальных ответа: PASS. `pnpm audit`: известных findings нет.
+- Реальный Windows bootstrap через PowerShell 5.1: все три контейнера healthy,
+  API ready. При повторе совпали SHA-256 `.env` и fingerprint ID/версий всех заявок.
+- Контрактные тесты установщика: PowerShell 5.1 и 7, shell через Git Bash и Linux
+  Alpine-контейнер без сети: PASS. Проверены private-архив, путь с пробелами,
+  сохранение `.env`, ошибка сборки, отказ работать с посторонним каталогом.
+- Отдельно проверена фактическая загрузка private-архива GitHub API с доступом
+  текущего пользователя; токен не сохраняется в checkout.
+- Все **10 Mermaid-блоков** README/архитектуры/данных/состояний распарсены и
+  отрендерены в Chromium. Изображения проверки остаются в ignored `artifacts/doc-qa/`.
+- Автоустановка Docker на чистых macOS/Windows не выполнялась: её системные шаги,
+  UAC/WSL, условия Docker и возможная перезагрузка явно описаны в `INSTALL.md`.
+
+## Повторный аудит и продуктовая доводка — 23 октября 2026
+
+Полный прогон после переработки карточки баланса на пересобранном Docker/Nginx
+(`BASE_URL=http://localhost:8088`): **11 E2E passed / 35,2 с**.
+Полный Vite-прогон той же версии: **11 passed / 48,9 с**.
+
+- Go vet и 10 domain-групп +10 PostgreSQL integration-подсценариев: PASS.
+- Frontend lint/typecheck/build и **6 unit tests**: PASS.
+- OpenAPI: 30 путей, **24 реальных ответа**: PASS.
+- Docker web image пересобран; postgres/api/web healthy. Smoke A → issued: PASS.
+- `pnpm audit`: No known vulnerabilities found. Это проверка известных зависимостных
+  проблем, не полный pentest; govulncheck повторно в этой доработке не запускался.
+- Новые E2E: сравнение двух серверных сценариев без изменения версии/предложений;
+  возобновление черновика оборудования после reload и игнорирование ошибочного product query;
+  помощь, focus restore, mobile menu/Escape, reduced motion, контекст запроса.
+- Axe: нет serious/critical на проверенных overview/insights/passport/queue,
+  What-if comparison и help. Не заявляем полное WCAG-соответствие всего продукта.
+- Новые снимки: `24-scenario-comparison.png`, `25-in-product-help.png`,
+  `26-next-action-mobile.png`; основные 01–23 обновлены тем же Docker-прогоном.
+  Desktop 1440×900 / 1280×800 и mobile 390×844 проверены.
+- Карточка баланса переработана и отдельно проверена в `balance.spec.ts`:
+  данные совпадают с API, скрытие/показ работает клавиатурой, ссылка ведёт в Financial Twin,
+  Axe на компоненте проходит, overflow не появляется на 1440/1280/390.
+
+Исправлены: dev origin mismatch без изменения backend policy, потеря product при
+resume, отсутствие draft ID в URL после первого сохранения, временно нечитаемый
+fade текста, неверные generic company labels, дробный срок симулятора,
+межтестовая зависимость accessibility spec.
+
+Ниже — историческая матрица предыдущего прогона; её дата и числа не означают,
+что все прежние внешние security/clean-launch проверки повторялись в новой доработке.
+
 Дата фактического прогона: **22 октября 2026**, Москва. Данные synthetic seed=2026.
 `PASS` ниже означает команду, реально выполненную в текущем workspace, а не ожидаемый результат.
 

@@ -7,6 +7,7 @@ set -eu
 
 REPO_URL="${ALFA_FLOW_REPO_URL:-https://github.com/NIDJEL/alfa-flow.git}"
 REPO_REF="${ALFA_FLOW_REF:-main}"
+GITHUB_REPOSITORY="${ALFA_FLOW_REPOSITORY:-NIDJEL/alfa-flow}"
 TARGET_DIR="${ALFA_FLOW_DIR:-$HOME/alfa-flow}"
 APP_URL="${ALFA_FLOW_URL:-http://localhost:8088}"
 OPEN_BROWSER="${ALFA_FLOW_OPEN_BROWSER:-1}"
@@ -80,7 +81,8 @@ find_checkout() {
     "$TARGET_DIR"; do
     if [ -f "$candidate/docker-compose.yml" ] &&
        [ -f "$candidate/backend/go.mod" ] &&
-       [ -f "$candidate/web/package.json" ]; then
+       [ -f "$candidate/web/package.json" ] &&
+       grep -q '"name"[[:space:]]*:[[:space:]]*"alfa-flow-web"' "$candidate/web/package.json"; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -100,7 +102,7 @@ clone_checkout() {
   fi
 
   info "Скачиваю исходники в $TARGET_DIR"
-  if has_command git; then
+  if has_command git && [ -z "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]; then
     git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" "$TARGET_DIR"
     return
   fi
@@ -109,12 +111,23 @@ clone_checkout() {
   has_command tar || fail "Не найден tar. Установите tar и повторите запуск."
 
   temp_dir
-  repo_base="$(printf '%s' "$REPO_URL" | sed 's/\.git$//')"
-  archive_url="$repo_base/archive/refs/heads/$REPO_REF.tar.gz"
-  download "$archive_url" "$TEMP_DIR/source.tar.gz"
+  archive_url="https://api.github.com/repos/$GITHUB_REPOSITORY/tarball/$REPO_REF"
+  # Tokens are never written into the checkout or a Git remote URL.
+  if [ -n "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]; then
+    curl --fail --show-error --location --retry 3 --connect-timeout 20 \
+      --header "Authorization: Bearer ${GH_TOKEN:-${GITHUB_TOKEN:-}}" \
+      "$archive_url" --output "$TEMP_DIR/source.tar.gz"
+  else
+    download "$archive_url" "$TEMP_DIR/source.tar.gz" ||
+      fail "Не удалось скачать проект. Для private-репозитория нужен доступ GitHub (GH_TOKEN/GITHUB_TOKEN) или авторизованный git clone."
+  fi
   mkdir "$TEMP_DIR/source"
   tar -xzf "$TEMP_DIR/source.tar.gz" -C "$TEMP_DIR/source" --strip-components=1
-  [ -f "$TEMP_DIR/source/backend/go.mod" ] || fail "Некорректный архив репозитория."
+  [ -f "$TEMP_DIR/source/backend/go.mod" ] &&
+    [ -f "$TEMP_DIR/source/web/package.json" ] &&
+    [ -f "$TEMP_DIR/source/docker-compose.yml" ] &&
+    grep -q '"name"[[:space:]]*:[[:space:]]*"alfa-flow-web"' "$TEMP_DIR/source/web/package.json" ||
+    fail "Некорректный архив репозитория."
   mv "$TEMP_DIR/source" "$TARGET_DIR"
 }
 

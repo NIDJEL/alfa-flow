@@ -11,6 +11,10 @@ ALFA FLOW — демонстрационный прототип умного к�
 > ставки, проверки, счета и выдача синтетические. Реальные деньги не переводятся.
 > Платные API, LLM и GPU не нужны.
 
+![Кабинет предпринимателя ALFA FLOW — синтетические данные](docs/images/overview.webp)
+
+**Два кабинета** · **Объяснимые решения** · **What-if и прогноз** · **Docker**
+
 ## Содержание
 
 - [Запуск за одну команду](#запуск-за-одну-команду)
@@ -24,9 +28,10 @@ ALFA FLOW — демонстрационный прототип умного к�
 
 ## Запуск за одну команду
 
-Для демонстрации нужен только **Docker Desktop** (Windows/macOS) или **Docker Engine +
-Compose v2** (Linux). Go, Node.js, pnpm и PostgreSQL устанавливать не нужно: они собираются
-в контейнерах. На первом запуске потребуется интернет и примерно 8–16 ГБ свободной RAM.
+Установщик скачает проект и при необходимости Docker. Go, Node.js, pnpm и PostgreSQL
+на компьютер устанавливать не нужно: сборка выполняется в контейнерах.
+Нужны интернет, 8–16 ГБ RAM на машине и свободные порты `8088`, `8080`, `5434`.
+Docker должен работать в режиме **Linux containers**.
 
 ### Если репозиторий уже клонирован
 
@@ -57,7 +62,7 @@ sh ./scripts/install.sh
 **Windows PowerShell:**
 
 ```powershell
-git clone https://github.com/NIDJEL/alfa-flow.git; Set-Location alfa-flow; .\scripts\install.cmd
+git clone https://github.com/NIDJEL/alfa-flow.git; if ($LASTEXITCODE -eq 0) { Set-Location alfa-flow; .\scripts\install.cmd }
 ```
 
 **macOS / Linux:**
@@ -66,24 +71,51 @@ git clone https://github.com/NIDJEL/alfa-flow.git; Set-Location alfa-flow; .\scr
 git clone https://github.com/NIDJEL/alfa-flow.git && cd alfa-flow && sh ./scripts/install.sh
 ```
 
-Для запуска без ручного клонирования:
+> Windows — `winget` или официальный подписанный installer; macOS —
+> Homebrew или официальный `.dmg`; Linux — официальный `get.docker.com` для dev/demo.
+> При установке Docker возможен запрос `sudo`/UAC. Условия Docker Desktop нужно
+> подтвердить самостоятельно; скрипт не принимает их за пользователя.
+> Если Windows запросит WSL 2 или перезагрузку, скрипт остановится без перезагрузки:
+> завершите системную настройку и повторите ту же команду. Данные не удаляются.
+>
+> Сейчас репозиторий закрытый, поэтому используйте команды `git clone` выше:
+> они требуют обычный доступ пользователя к GitHub. Если репозиторий будет открыт,
+> эти же скрипты можно будет запускать напрямую через `raw.githubusercontent.com`.
 
-**Windows PowerShell:**
+<details>
+<summary>Прямая установка без Git: для публичного репозитория или с GitHub-токеном</summary>
+
+Для публичного репозитория:
 
 ```powershell
-irm https://raw.githubusercontent.com/NIDJEL/alfa-flow/main/scripts/install.ps1 | iex
+# Windows PowerShell
+(irm https://raw.githubusercontent.com/NIDJEL/alfa-flow/main/scripts/install.ps1).TrimStart([char]0xFEFF) | iex
 ```
 
-**macOS / Linux:**
-
 ```sh
+# macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/NIDJEL/alfa-flow/main/scripts/install.sh | sh
 ```
 
-> Скрипты автоматически устанавливают Docker только если это возможно безопасно:
-> Windows — через `winget`, macOS — через Homebrew или официальный `.dmg`, Linux —
-> официальным `get.docker.com`.
-> Если пакетный менеджер недоступен, скрипт остановится и подскажет, что установить вручную.
+Для текущего **закрытого** репозитория задайте в окружении `GH_TOKEN` с правом чтения
+его содержимого. Не вставляйте токен в README, Git remote или общую историю команд.
+Скачать скрипт и установить проект:
+
+```powershell
+# GH_TOKEN уже задан в окружении
+(irm -Headers @{Authorization="Bearer $env:GH_TOKEN"; Accept="application/vnd.github.raw+json"} https://api.github.com/repos/NIDJEL/alfa-flow/contents/scripts/install.ps1).TrimStart([char]0xFEFF) | iex
+```
+
+```sh
+# GH_TOKEN уже задан в окружении
+curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github.raw+json" https://api.github.com/repos/NIDJEL/alfa-flow/contents/scripts/install.sh | sh
+```
+
+По умолчанию исходники окажутся в `~/alfa-flow`. Вместо токена также можно скачать
+ZIP в GitHub под своей учётной записью, распаковать и запустить локальный скрипт.
+Установщик не хранит токен в проекте и не меняет видимость репозитория.
+
+</details>
 
 ### Адреса после запуска
 
@@ -178,7 +210,7 @@ flowchart LR
 
 ## Как читать диаграммы
 
-В документации используются три схемы. Чтобы не смешивать разные уровни:
+Схемы разделены на три уровня, чтобы не смешивать разные задачи:
 
 1. **Архитектура** показывает, как браузер, контейнеры и слои Go общаются между собой.
 2. **Модель данных** показывает, где живет заявка и какие immutable evidence-таблицы
@@ -194,30 +226,26 @@ flowchart LR
 - [Кредитная политика](docs/CREDIT_POLICY.md)
 - [Метод прогноза](docs/FORECAST_METHOD.md)
 - [Операционный runbook](docs/RUNBOOK.md)
+- [Установка: параметры, повторный запуск и ограничения ОС](docs/INSTALL.md)
 
 ## Разработка и проверки
 
 ### Локальный dev-режим без web-контейнера
 
-В production-подобном Docker-запуске команды не нужны. Для разработки можно поднять
-PostgreSQL, API и Vite отдельно:
+Для разработки интерфейса оставьте PostgreSQL и API в Docker, а Vite запустите локально:
 
 ```powershell
-docker compose up -d postgres
-cd backend
-$env:DATABASE_URL="postgres://alfa_demo:local_synthetic_only@localhost:5434/alfa_flow?sslmode=disable"
-$env:DEMO_MODE="true"
-$env:PUBLIC_ORIGIN="http://localhost:5173"
-go run ./cmd/api
-```
-
-Во втором терминале:
-
-```powershell
+docker compose up -d postgres api
 cd web
 pnpm install --frozen-lockfile
 pnpm dev
 ```
+
+Откройте `http://127.0.0.1:5173`. Vite проксирует `/api` на `localhost:8080`,
+передавая `Origin: http://localhost:8088`, как Docker/Nginx; API сохраняет строгую
+CSRF-проверку. Для локального Go development сначала остановите контейнер `api`,
+задайте `DATABASE_URL` из Compose, `DEMO_MODE=true`, `PUBLIC_ORIGIN=http://localhost:8088`
+и выполните `go run ./cmd/api` из `backend`.
 
 Полный набор проверок:
 
@@ -230,6 +258,7 @@ pnpm dev
 ```powershell
 cd backend
 go vet ./...
+$env:TEST_DATABASE_URL="postgres://alfa_demo:local_synthetic_only@localhost:5434/alfa_flow?sslmode=disable"
 go test ./... -count=1 -v
 go run ./cmd/contracts
 cd ../web
@@ -245,14 +274,20 @@ pnpm test:e2e
 
 E2E-тесты сбрасывают только синтетические fixtures через dev-only admin API.
 Не запускайте их на стенде, где нужно сохранить текущие демо-заявки.
+Без `TEST_DATABASE_URL` PostgreSQL integration-тесты пропускаются — это не успешная
+проверка БД. Матрица проверок: [TEST_SCENARIOS](docs/TEST_SCENARIOS.md).
 
 ## Конфигурация и ограничения
 
-Compose использует безопасные локальные значения из `.env.example`:
+Compose использует демонстрационные локальные значения из `.env.example`:
 
 - `POSTGRES_PASSWORD` — пароль локальной демонстрационной БД;
-- `DEMO_MODE=true` — вход через синтетические персоны;
-- `AI_ENABLED=false` — AI/LLM в поставку не включён.
+- `DEMO_MODE=true` — вход через синтетические персоны (фиксируется Compose);
+- `AI_ENABLED=false` — AI/LLM в поставку не включён (фиксируется Compose).
+
+`POSTGRES_PASSWORD` действует при создании нового volume. Не меняйте его для уже
+инициализированной БД простой правкой `.env`: потребуется согласованная смена пароля
+в PostgreSQL. Существующий `.env` установщик не перезаписывает.
 
 У проекта нет real KYC, реального БКИ, электронной подписи или выдачи денег. Документ
 сохраняется как проверенные метаданные и hash, а не как production-архив с OCR и антивирусом.
@@ -281,3 +316,7 @@ CSV импорт проверяет UTF-8 и дубликаты. Обновле�
 
 Проверено 23 октября 2026 года в локальном Docker Compose. Это демонстрационный прототип,
 а не production banking-система.
+
+**Проверки:** 11 E2E, 6 frontend unit tests, Go + PostgreSQL integration,
+lint/typecheck/build, 24 API-ответа по OpenAPI и smoke A → `issued`.
+Подробности и ограничения проверки: [TEST_SCENARIOS](docs/TEST_SCENARIOS.md).

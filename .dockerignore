@@ -8,6 +8,7 @@ prompts
 docs/design-direction.md
 docs/IMPLEMENTATION_STATUS.md
 docs/RELEASE.md
+docs/REQUIREMENTS_AUDIT.md
 **/node_modules
 web/dist
 artifacts

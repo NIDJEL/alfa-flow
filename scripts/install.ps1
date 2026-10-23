@@ -2,10 +2,11 @@
 
 # ALFA FLOW bootstrap for Windows PowerShell.
 # It can be run from a checkout or directly from GitHub:
-#   irm https://raw.githubusercontent.com/NIDJEL/alfa-flow/main/scripts/install.ps1 | iex
+#   (irm https://raw.githubusercontent.com/NIDJEL/alfa-flow/main/scripts/install.ps1).TrimStart([char]0xFEFF) | iex
 
 $RepoUrl = if ($env:ALFA_FLOW_REPO_URL) { $env:ALFA_FLOW_REPO_URL } else { "https://github.com/NIDJEL/alfa-flow.git" }
 $RepoRef = if ($env:ALFA_FLOW_REF) { $env:ALFA_FLOW_REF } else { "main" }
+$Repository = if ($env:ALFA_FLOW_REPOSITORY) { $env:ALFA_FLOW_REPOSITORY } else { "NIDJEL/alfa-flow" }
 $TargetDir = [IO.Path]::GetFullPath($(if ($env:ALFA_FLOW_DIR) { $env:ALFA_FLOW_DIR } else { Join-Path $HOME "alfa-flow" }))
 $AppUrl = if ($env:ALFA_FLOW_URL) { $env:ALFA_FLOW_URL } else { "http://localhost:8088" }
 $WaitSeconds = if ($env:ALFA_FLOW_WAIT_SECONDS) { [int]$env:ALFA_FLOW_WAIT_SECONDS } else { 300 }
@@ -31,11 +32,30 @@ function Has-Command {
 
 function Test-Checkout {
     param([string]$Path)
-    return (
+    $hasFiles = (
         (Test-Path -LiteralPath (Join-Path $Path "docker-compose.yml")) -and
         (Test-Path -LiteralPath (Join-Path $Path "backend\go.mod")) -and
         (Test-Path -LiteralPath (Join-Path $Path "web\package.json"))
     )
+    if (-not $hasFiles) { return $false }
+    try {
+        $package = Get-Content -LiteralPath (Join-Path $Path "web\package.json") -Raw | ConvertFrom-Json
+        return $package.name -eq "alfa-flow-web"
+    }
+    catch { return $false }
+}
+
+function Remove-BootstrapTemp {
+    param([string]$Path)
+    if (Test-Path -LiteralPath $Path) {
+        $resolvedTemp = (Resolve-Path -LiteralPath $Path).Path
+        $expectedParent = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd("\")
+        if ((Split-Path -Parent $resolvedTemp).TrimEnd("\") -ne $expectedParent -or
+            (Split-Path -Leaf $resolvedTemp) -notmatch '^alfa-flow-[a-f0-9]{32}$') {
+            throw "Refusing to remove unexpected temp path: $resolvedTemp"
+        }
+        Remove-Item -LiteralPath $resolvedTemp -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Download-Checkout {
@@ -53,7 +73,8 @@ function Download-Checkout {
     New-Item -ItemType Directory -Force -Path $parent | Out-Null
     Write-Step "Скачиваю исходники в $TargetDir"
 
-    if (Has-Command "git") {
+    $token = if ($env:GH_TOKEN) { $env:GH_TOKEN } else { $env:GITHUB_TOKEN }
+    if ((Has-Command "git") -and -not $token) {
         & git clone --depth 1 --branch $RepoRef $RepoUrl $TargetDir
         if ($LASTEXITCODE -ne 0) {
             throw "Не удалось клонировать репозиторий."
@@ -61,15 +82,21 @@ function Download-Checkout {
         return
     }
 
-    $repoBase = $RepoUrl -replace "\.git$", ""
-    $archiveUrl = "$repoBase/archive/refs/heads/$RepoRef.zip"
+    $archiveUrl = "https://api.github.com/repos/$Repository/zipball/$RepoRef"
     $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("alfa-flow-" + [Guid]::NewGuid().ToString("N"))
     $archivePath = Join-Path $tempRoot "source.zip"
     $sourcePath = Join-Path $tempRoot "source"
     New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
 
     try {
-        Invoke-WebRequest -UseBasicParsing -Uri $archiveUrl -OutFile $archivePath
+        $headers = @{ Accept = "application/vnd.github+json" }
+        if ($token) { $headers.Authorization = "Bearer $token" }
+        try {
+            Invoke-WebRequest -UseBasicParsing -Uri $archiveUrl -Headers $headers -OutFile $archivePath
+        }
+        catch {
+            throw "Cannot download the repository. Private repositories need GitHub read access (GH_TOKEN/GITHUB_TOKEN or an authenticated git clone)."
+        }
         Expand-Archive -LiteralPath $archivePath -DestinationPath $sourcePath
         $extracted = @(Get-ChildItem -LiteralPath $sourcePath -Directory)
         if ($extracted.Count -ne 1 -or -not (Test-Checkout $extracted[0].FullName)) {
@@ -81,16 +108,7 @@ function Download-Checkout {
             Copy-Item -Destination $TargetDir -Recurse -Force
     }
     finally {
-        if (Test-Path -LiteralPath $tempRoot) {
-            # Only recursively delete our newly generated direct child of the OS temp directory.
-            $resolvedTemp = (Resolve-Path -LiteralPath $tempRoot).Path
-            $expectedParent = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd("\")
-            if ((Split-Path -Parent $resolvedTemp).TrimEnd("\") -ne $expectedParent -or
-                (Split-Path -Leaf $resolvedTemp) -notmatch '^alfa-flow-[a-f0-9]{32}$') {
-                throw "Refusing to remove unexpected temp path: $resolvedTemp"
-            }
-            Remove-Item -LiteralPath $resolvedTemp -Recurse -Force -ErrorAction SilentlyContinue
-        }
+        Remove-BootstrapTemp $tempRoot
     }
 }
 
@@ -113,24 +131,76 @@ function Test-DockerReady {
     return $LASTEXITCODE -eq 0
 }
 
+function Install-DockerDesktop {
+    if (Has-Command "winget") {
+        Write-Step "Устанавливаю Docker Desktop через winget"
+        & winget install --id Docker.DockerDesktop --exact --accept-source-agreements --accept-package-agreements
+        $installExit = $LASTEXITCODE
+    }
+    else {
+        $architecture = if ($env:PROCESSOR_ARCHITEW6432) { $env:PROCESSOR_ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
+        switch ($architecture) {
+            "ARM64" { $dockerArch = "arm64" }
+            "AMD64" { $dockerArch = "amd64" }
+            default { throw "Docker Desktop requires 64-bit Windows (x64 or ARM64)." }
+        }
+        $tempRoot = Join-Path ([IO.Path]::GetTempPath()) ("alfa-flow-" + [Guid]::NewGuid().ToString("N"))
+        New-Item -ItemType Directory -Path $tempRoot | Out-Null
+        try {
+            $installer = Join-Path $tempRoot "DockerDesktopInstaller.exe"
+            Write-Step "Скачиваю официальный Docker Desktop для $dockerArch"
+            Invoke-WebRequest -UseBasicParsing -Uri "https://desktop.docker.com/win/main/$dockerArch/Docker%20Desktop%20Installer.exe" -OutFile $installer
+            $signature = Get-AuthenticodeSignature -LiteralPath $installer
+            if ($signature.Status -ne "Valid" -or $signature.SignerCertificate.Subject -notmatch "Docker") {
+                throw "Docker Desktop installer signature verification failed."
+            }
+            $process = Start-Process -FilePath $installer -ArgumentList @("install", "--user", "--quiet", "--backend=wsl-2") -WindowStyle Hidden -Wait -PassThru
+            $installExit = $process.ExitCode
+        }
+        finally {
+            Remove-BootstrapTemp $tempRoot
+        }
+    }
+    if ($installExit -eq 3010 -or $installExit -eq 1641) {
+        throw "Docker установлен. Нужна перезагрузка Windows: перезагрузите компьютер и повторите ту же команду."
+    }
+    if ($installExit -ne 0) {
+        throw "Docker Desktop install failed (exit $installExit). See the install output, then retry. Windows was not restarted."
+    }
+}
+
+function Ensure-Wsl {
+    if (-not (Has-Command "wsl.exe")) {
+        throw "WSL is unavailable. Update Windows and enable WSL 2, then retry."
+    }
+    $ErrorActionPreference = "Continue"
+    & wsl.exe --status *> $null
+    $wslExit = $LASTEXITCODE
+    $ErrorActionPreference = "Stop"
+    if ($wslExit -eq 0) { return }
+    Write-Step "Включаю WSL 2. Windows запросит права администратора; автоматической перезагрузки не будет."
+    $helper = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
+    $process = Start-Process -FilePath $helper -Verb RunAs -WindowStyle Hidden -Wait -PassThru -ArgumentList '-NoProfile -Command "wsl.exe --install --no-distribution; exit $LASTEXITCODE"'
+    if ($process.ExitCode -ne 0 -and $process.ExitCode -ne 3010) {
+        throw "WSL setup did not complete. Enable virtualization and run wsl --install --no-distribution as Administrator, restart if requested, then retry."
+    }
+    $ErrorActionPreference = "Continue"
+    & wsl.exe --status *> $null
+    $wslExit = $LASTEXITCODE
+    $ErrorActionPreference = "Stop"
+    if ($wslExit -ne 0) {
+        throw "WSL is installed but not ready. Restart Windows if requested and run this command again."
+    }
+}
+
 function Ensure-Docker {
     Add-DockerToPath
     if (-not (Has-Command "docker")) {
         if (-not $InstallDocker) {
             throw "Docker не найден. Установите Docker Desktop или уберите ALFA_FLOW_INSTALL_DOCKER=0."
         }
-        if (-not (Has-Command "winget")) {
-            throw "Docker не найден, а winget недоступен. Установите Docker Desktop вручную и повторите запуск."
-        }
-
-        Write-Step "Устанавливаю Docker Desktop через winget"
-        & winget install --id Docker.DockerDesktop --exact --accept-source-agreements --accept-package-agreements
-        if ($LASTEXITCODE -eq 3010 -or $LASTEXITCODE -eq 1641) {
-            throw "Docker установлен. Нужна перезагрузка Windows: перезагрузите компьютер и повторите ту же команду."
-        }
-        if ($LASTEXITCODE -ne 0) {
-            throw "Не удалось установить Docker Desktop (winget exit $LASTEXITCODE). Проверьте вывод установки; перезагрузка не выполнялась."
-        }
+        Ensure-Wsl
+        Install-DockerDesktop
         Add-DockerToPath
     }
 
