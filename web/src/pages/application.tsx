@@ -39,6 +39,11 @@ import {
 } from "../components/common";
 import { Button } from "../components/ui/button";
 import { DocumentUpload } from "../components/documents";
+import { ApplicationJourney } from "../components/application-journey";
+import {
+  ScenarioComparison,
+  type ComparedScenario,
+} from "../components/scenario-comparison";
 import { date, outcomeText, rub, statusText } from "../lib";
 export function ApplicationDetail({ bank = false }: { bank?: boolean }) {
   const { id = "" } = useParams();
@@ -102,6 +107,7 @@ export function ApplicationDetail({ bank = false }: { bank?: boolean }) {
         · исходный запрос {rub(a.params.amount_kopeks)} на{" "}
         {a.params.term_months} мес.
       </Heading>
+      <ApplicationJourney status={a.status} />
       {error && <ErrorBox error={error} />}
       <div className="detail-layout">
         <div className="detail-main">
@@ -699,6 +705,7 @@ function WhatIfPanel({ application: a }: { application: Application }) {
   const [amount, setAmount] = useState(initial.amount_kopeks / 100);
   const [term, setTerm] = useState(initial.term_months);
   const [debounced, setDebounced] = useState({ amount, term });
+  const [savedScenarios, setSavedScenarios] = useState<ComparedScenario[]>([]);
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
@@ -714,13 +721,13 @@ function WhatIfPanel({ application: a }: { application: Application }) {
   };
   const valid =
     Number.isFinite(amount) &&
-    Number.isFinite(term) &&
-    params.amount_kopeks >= product.min_amount_kopeks &&
-    params.amount_kopeks <= product.max_amount_kopeks &&
-    params.term_months >= product.min_term_months &&
-    params.term_months <= product.max_term_months;
+    Number.isInteger(term) &&
+    amount * 100 >= product.min_amount_kopeks &&
+    amount * 100 <= product.max_amount_kopeks &&
+    term >= product.min_term_months &&
+    term <= product.max_term_months;
   const simulation = useQuery({
-    queryKey: ["simulation", a.id, params],
+    queryKey: ["simulation", a.id, a.version, params],
     queryFn: ({ signal }) =>
       api<Simulation>(
         "/applications/" + a.id + "/simulations",
@@ -728,7 +735,7 @@ function WhatIfPanel({ application: a }: { application: Application }) {
         params,
         signal,
       ),
-    enabled: valid,
+    enabled: valid && debounced.amount === amount && debounced.term === term,
   });
   const stale =
     debounced.amount !== amount ||
@@ -977,6 +984,14 @@ function WhatIfPanel({ application: a }: { application: Application }) {
                     ))}
                   </section>
                 )}
+                <ScenarioComparison
+                  params={params}
+                  simulation={s}
+                  stale={stale}
+                  revision={a.version}
+                  saved={savedScenarios}
+                  setSaved={setSavedScenarios}
+                />
                 <section className="panel">
                   <PaymentSchedule schedule={s.evaluation.schedule} />
                 </section>

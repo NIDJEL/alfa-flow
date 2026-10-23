@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   Link,
   NavLink,
@@ -24,9 +24,10 @@ import {
   ShieldCheck,
   Sparkles,
   WalletCards,
+  X,
 } from "lucide-react";
 import { api, APIError, setCSRF } from "./api";
-import type { Actor } from "./types";
+import type { Actor, Company } from "./types";
 import { ErrorBox, Loading } from "./components/common";
 import { Button } from "./components/ui/button";
 import { SessionContext, useSession } from "./session";
@@ -34,6 +35,7 @@ import { Dashboard, Financing, Insights } from "./pages/overview";
 import { Wizard } from "./pages/wizard";
 import { ApplicationDetail, Passport, WhatIf } from "./pages/application";
 import { BankQueue } from "./pages/bank";
+import { ProductHelp } from "./components/product-help";
 type Session = { actor: Actor; csrf_token: string };
 export function App() {
   const location = useLocation();
@@ -177,10 +179,97 @@ function BankOnly({ children }: { children: React.ReactNode }) {
 function Shell() {
   const { actor } = useSession();
   const [open, setOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpButton = useRef<HTMLButtonElement>(null);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
+  const mobile = useSyncExternalStore(
+    (notify) => {
+      const media = window.matchMedia("(max-width: 760px)");
+      media.addEventListener("change", notify);
+      return () => media.removeEventListener("change", notify);
+    },
+    () => window.matchMedia("(max-width: 760px)").matches,
+  );
+  const company = useQuery({
+    queryKey: ["company"],
+    queryFn: ({ signal }) =>
+      api<Company>("/companies/me", "GET", undefined, signal),
+    enabled: actor.role === "client",
+  });
   const bank = actor.role === "bank_analyst";
+  const companyName = bank
+    ? "Кредитный конвейер"
+    : actor.role === "demo_admin"
+      ? "Демо-стенд"
+      : company.data?.name.replace(/ООО|ИП|[«»]/g, "").trim() ||
+        "Бизнес-кабинет";
+  const closeHelp = () => {
+    setHelpOpen(false);
+    requestAnimationFrame(() => helpButton.current?.focus());
+  };
+  useEffect(() => {
+    if (!open || !mobile) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const previousFocus = document.activeElement as HTMLElement | null;
+    sidebar.current
+      ?.querySelector<HTMLButtonElement>(".mobile-nav-close")
+      ?.focus();
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      previousFocus?.focus();
+    };
+  }, [open, mobile]);
   return (
     <div className={"app-shell " + (open ? "nav-open" : "")}>
-      <aside className="sidebar">
+      <a className="skip-link" href="#main">
+        К содержимому
+      </a>
+      {open && mobile && (
+        <button
+          className="nav-backdrop"
+          aria-label="Закрыть меню"
+          onClick={() => setOpen(false)}
+          tabIndex={-1}
+        />
+      )}
+      <aside
+        ref={sidebar}
+        className="sidebar"
+        id="main-navigation"
+        inert={mobile && !open}
+        onKeyDown={(event) => {
+          if (!mobile || !open) return;
+          if (event.key === "Escape") {
+            setOpen(false);
+            menuButton.current?.focus();
+          }
+          if (event.key === "Tab") {
+            const targets = sidebar.current?.querySelectorAll<HTMLElement>(
+              "a[href], button:not([disabled])",
+            );
+            if (!targets?.length) return;
+            const first = targets[0],
+              last = targets[targets.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last.focus();
+            }
+            if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first.focus();
+            }
+          }
+        }}
+      >
+        <button
+          className="icon-button mobile-nav-close"
+          onClick={() => setOpen(false)}
+          aria-label="Закрыть меню"
+        >
+          <X size={20} />
+        </button>
         <Link to={bank ? "/bank" : "/app"} className="brand">
           <span className="brand-symbol">А</span>
           <span>
@@ -197,13 +286,7 @@ function Shell() {
             {bank ? <ShieldCheck size={20} /> : <Building2 size={20} />}
           </div>
           <div>
-            <strong>
-              {bank
-                ? "Кредитный конвейер"
-                : actor.persona === "A_APPROVED"
-                  ? "Северный Кофе"
-                  : "Демо-компания"}
-            </strong>
+            <strong>{companyName}</strong>
             <small>{bank ? "Рабочее место банка" : "Бизнес-кабинет"}</small>
           </div>
           <ChevronDown size={14} />
@@ -257,15 +340,18 @@ function Shell() {
           <Link to="/demo" className="switch-role">
             <LogOut size={17} /> Сменить демо-профиль
           </Link>
-          <span className="sidebar-version">ALFA HACK / 2026</span>
+          <span className="sidebar-version">ALFA FUTURE / 2026</span>
         </div>
       </aside>
       <div className="main-column">
         <header className="topbar">
           <div className="topbar-left">
             <button
+              ref={menuButton}
               className="icon-button mobile-menu"
-              aria-label="Открыть меню"
+              aria-label={open ? "Закрыть меню" : "Открыть меню"}
+              aria-expanded={open && mobile}
+              aria-controls="main-navigation"
               onClick={() => setOpen(!open)}
             >
               <PanelLeftClose />
@@ -278,17 +364,31 @@ function Shell() {
             </span>
           </div>
           <div className="topbar-right">
-            <Link to="/demo" className="help-link" title="Выбор демо-профиля">
+            <button
+              ref={helpButton}
+              className="icon-button help-link"
+              title="Как это работает"
+              aria-label="Как это работает"
+              onClick={() => setHelpOpen(true)}
+            >
               <CircleHelp size={19} />
-            </Link>
-            <div className="avatar">{bank ? "БА" : "СК"}</div>
+            </button>
+            <div className="avatar" aria-hidden="true">
+              {bank
+                ? "БА"
+                : companyName
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((part) => part[0])
+                    .join("")}
+            </div>
             <div className="profile">
               <strong>{bank ? "Банковский аналитик" : actor.name}</strong>
               <small>{actor.persona}</small>
             </div>
           </div>
         </header>
-        <main id="main" className="page-content">
+        <main id="main" className="page-content" tabIndex={-1}>
           <Outlet />
         </main>
         <footer className="footer">
@@ -298,6 +398,7 @@ function Shell() {
           <span>Сделано для бизнеса. Проверяемо для банка.</span>
         </footer>
       </div>
+      {helpOpen && <ProductHelp bank={bank} onClose={closeHelp} />}
     </div>
   );
 }
@@ -354,7 +455,7 @@ export function Demo() {
         </div>
         <span className="demo-tag">
           <i />
-          ALFA HACK 2026 / ДЕМОНСТРАЦИЯ
+          ALFA FUTURE / 2026 · ДЕМОНСТРАЦИЯ
         </span>
         <h1>
           Бизнес движется.
@@ -374,6 +475,36 @@ export function Demo() {
           <span>
             <Command /> Без платных API
           </span>
+        </div>
+        <div
+          className="demo-capabilities"
+          aria-label="Ключевые возможности продукта"
+        >
+          <div className="demo-capability">
+            <span className="demo-capability-index">01</span>
+            <span>
+              <strong>Financial Twin</strong>
+              <small>
+                Помогает заранее заметить возможный кассовый разрыв.
+              </small>
+            </span>
+          </div>
+          <div className="demo-capability">
+            <span className="demo-capability-index">02</span>
+            <span>
+              <strong>What-if симулятор</strong>
+              <small>
+                Сравнивает сумму, срок и платёж без изменения заявки.
+              </small>
+            </span>
+          </div>
+          <div className="demo-capability">
+            <span className="demo-capability-index">03</span>
+            <span>
+              <strong>Паспорт решения</strong>
+              <small>Показывает причины, входные данные и версию правил.</small>
+            </span>
+          </div>
         </div>
         <small>
           Учебный прототип. Только синтетические данные.

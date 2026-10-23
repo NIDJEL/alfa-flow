@@ -35,6 +35,8 @@ import { date, rub, shortDate } from "../lib";
 import { Button } from "../components/ui/button";
 import { CashflowImport } from "../components/cashflow-import";
 import { ClientApplicationList } from "../components/application-list";
+import { attentionApplication, nextAction } from "../journey";
+import { AccountBalance } from "../components/account-balance";
 export function Dashboard() {
   const company = useCompany();
   const cash = useCashflow();
@@ -57,9 +59,21 @@ export function Dashboard() {
     );
   const c = company.data!;
   const f = cash.data!;
-  const active = applications.data?.find(
-    (a) => !["issued", "declined", "closed"].includes(a.status),
-  );
+  const active = attentionApplication(applications.data || []);
+  const action = nextAction(active);
+  const cashflowRatio =
+    f.average_inflow_kopeks > 0
+      ? Math.round((f.free_cashflow_kopeks / f.average_inflow_kopeks) * 100)
+      : null;
+  const cashflowSignal = forecast.isPending
+    ? "Проверяем денежный горизонт…"
+    : forecast.error
+      ? "Прогноз пока недоступен"
+      : !forecast.data?.sufficient_history
+        ? "Сначала дополним финансовую историю"
+        : forecast.data.cash_gap_date
+          ? `Возможный разрыв — ${shortDate(forecast.data.cash_gap_date)}`
+          : "Проверьте запас на предстоящие расходы";
   return (
     <>
       <Heading
@@ -67,56 +81,35 @@ export function Dashboard() {
         title="Больше возможностей для роста"
         action={
           <span className="date-label">
-            22 октября 2026<small>Данные демо-стенда</small>
+            22 октября 2026<small>Дата модели · не текущий день</small>
           </span>
         }
       >
         Здравствуйте! Всё важное о финансах {c.name} — здесь.
       </Heading>
       <div className="overview-grid">
-        <section className="balance-card">
-          <div className="card-topline">
-            <span>
-              <Wallet size={18} />
-              Доступно на счетах
-            </span>
-            <span className="mini-label">RUB</span>
-          </div>
-          <div className="balance-number">{rub(f.opening_balance_kopeks)}</div>
-          <div className="balance-bottom">
-            <span className="positive">
-              <span className="live-dot" />
-              Синтетический баланс
-            </span>
-            <span className="account-label">Расчётный счёт · ДЕМО</span>
-          </div>
-          <div className="balance-lines" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-        </section>
-        <section className="growth-card">
+        <AccountBalance balance={f.opening_balance_kopeks} />
+        <section
+          className={
+            "growth-card next-action-card " +
+            (active ? "has-active-application" : "")
+          }
+        >
           <div className="round-icon">
             <TrendingUp size={21} />
           </div>
-          <p className="eyebrow">СЛЕДУЮЩИЙ ШАГ ДЛЯ БИЗНЕСА</p>
-          <h2>
-            Планы есть.
-            <br />
-            Найдём финансирование.
-          </h2>
-          <p>
-            Оборотные средства или новое оборудование —
-            <br className="desktop" />
-            подберём понятные условия под вашу задачу.
-          </p>
-          <Link to="/app/financing" className="text-link">
-            Подобрать финансирование
+          <p className="eyebrow">{action.eyebrow}</p>
+          <h2>{action.title}</h2>
+          <p>{action.description}</p>
+          <Link to={action.to} className="text-link">
+            {action.link}
             <ArrowRight size={18} />
           </Link>
+          {active && (
+            <Link to="/app/financing" className="growth-secondary">
+              Подобрать финансирование <ChevronRight size={15} />
+            </Link>
+          )}
           <span className="growth-index" aria-hidden="true">
             ↗
           </span>
@@ -146,12 +139,36 @@ export function Dashboard() {
           value={rub(f.free_cashflow_kopeks)}
           note={
             <>
-              <span className="positive">После действующих долгов</span> · в
-              месяц
+              <span>После действующих долгов</span> · в месяц
             </>
           }
         />
       </div>
+      <section
+        className={
+          "signal-strip " +
+          (forecast.data?.cash_gap_date ? "signal-warning" : "")
+        }
+        aria-label="Сигналы по финансовому состоянию"
+      >
+        <div className="signal-mark" aria-hidden="true">
+          <TrendingUp size={18} />
+        </div>
+        <div className="signal-copy">
+          <p className="eyebrow">СИГНАЛ ДЛЯ БИЗНЕСА</p>
+          <strong>{cashflowSignal}</strong>
+          <span>
+            {cashflowRatio === null
+              ? "Нет достаточных данных об обороте."
+              : `После расходов и долгов остаётся ${cashflowRatio}% среднего оборота.`}{" "}
+            Это ориентир по синтетической истории, а не решение банка.
+          </span>
+        </div>
+        <Link to="/app/insights" className="signal-link">
+          Проверить прогноз
+          <ArrowRight size={17} />
+        </Link>
+      </section>
       <div className="content-grid">
         <section className="panel chart-panel">
           <div className="section-heading">
@@ -269,6 +286,7 @@ export function Financing() {
           </p>
           <div className="segmented">
             <button
+              aria-pressed={purpose === "working_capital"}
               className={purpose === "working_capital" ? "active" : ""}
               onClick={() => setPurpose("working_capital")}
             >
@@ -276,6 +294,7 @@ export function Financing() {
               Закупка сырья / оборот
             </button>
             <button
+              aria-pressed={purpose === "equipment"}
               className={purpose === "equipment" ? "active" : ""}
               onClick={() => setPurpose("equipment")}
             >
@@ -416,6 +435,7 @@ export function Insights() {
             {[30, 60, 90].map((n) => (
               <button
                 key={n}
+                aria-pressed={horizon === n}
                 className={horizon === n ? "active" : ""}
                 onClick={() => setHorizon(n)}
               >

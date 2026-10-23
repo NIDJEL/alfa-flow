@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-22",
+  "generated": "2026-10-23",
   "scope": "Все установленные прямые и транзитивные npm runtime/dev dependencies; exact lockfile versions",
   "dependencies": [
     {
@@ -307,6 +307,15 @@
       "license": "Apache-2.0",
       "author": "Nicholas C. Zakas",
       "homepage": "https://github.com/eslint/rewrite/tree/main/packages/plugin-kit#readme"
+    },
+    {
+      "name": "@fontsource/geologica",
+      "versions": [
+        "5.2.6"
+      ],
+      "license": "OFL-1.1",
+      "author": "Google Inc.",
+      "homepage": "https://fontsource.org/fonts/geologica"
     },
     {
       "name": "@fontsource/onest",

@@ -30,7 +30,7 @@ await writeFile(
   "../docs/DEPENDENCY_LICENSES.json",
   JSON.stringify(
     {
-      generated: "2026-10-22",
+      generated: new Date().toISOString().slice(0, 10),
       scope:
         "Все установленные прямые и транзитивные npm runtime/dev dependencies; exact lockfile versions",
       dependencies,

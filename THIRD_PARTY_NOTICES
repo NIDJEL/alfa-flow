@@ -22,6 +22,7 @@ Frontend runtime
 - Tailwind CSS 4.1.12 / @tailwindcss/vite 4.1.12 — https://tailwindcss.com/ — MIT.
 - Vite 7.3.7 / @vitejs/plugin-react 5.0.1 — https://vite.dev/ — MIT.
 - Onest font package 5.2.6 — https://github.com/simpals/onest — SIL Open Font License 1.1.
+- Geologica font package 5.2.6 — https://github.com/google/fonts — SIL Open Font License 1.1.
 
 Tooling
 - TypeScript 5.9.2 — https://github.com/microsoft/TypeScript — Apache-2.0.
@@ -39,9 +40,9 @@ No real FNS, BKI, registry, payment, signing or disbursement integration exists.
 Simulated adapters are local deterministic Go code: registry, BKI, authority, signing, disbursement.
 All profiles/transactions/documents are generated in `SeedCompanies()` with seed=2026.
 
-Full transitive inventory: docs/DEPENDENCY_LICENSES.json (281 installed npm packages).
+Full transitive inventory: docs/DEPENDENCY_LICENSES.json (282 installed npm packages).
 Copyright/license/NOTICE texts from installed npm and Go modules:
-docs/DEPENDENCY_LICENSE_TEXTS.txt (283 text files collected).
+docs/DEPENDENCY_LICENSE_TEXTS.txt (284 text files collected).
 Prettier 3.6.2 — https://prettier.io/ — MIT.
 Go transitive modules: pgpassfile 1.0.0 (MIT), pgservicefile 0.0.0-20240606120523-5a60cdf6a761
 (MIT), puddle/v2 2.2.2 (MIT), x/sync 0.22.0 and x/text 0.41.0 (BSD-3-Clause).

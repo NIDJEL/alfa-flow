@@ -55,9 +55,25 @@ test("P1 CSV: безопасный импорт, дубликаты и дост�
   await scan();
   const appsResponse = await page.request.get("/api/v1/applications");
   const applications = await appsResponse.json();
-  const issued = applications.find(
+  let issued = applications.find(
     (a: { decisions: unknown[] }) => a.decisions.length > 0,
   );
+  // The accessibility spec must also run in isolation, not depend on credit.spec.
+  if (!issued) {
+    const { csrf_token } = await (await page.request.get("/api/v1/me")).json();
+    const draft = applications.find(
+      (a: { status: string }) => a.status === "draft",
+    );
+    const result = await page.request.post(
+      `/api/v1/applications/${draft.id}/submit`,
+      {
+        headers: { "X-CSRF-Token": csrf_token },
+        data: { version: draft.version, consent: true },
+      },
+    );
+    expect(result.ok()).toBeTruthy();
+    issued = await result.json();
+  }
   expect(issued).toBeTruthy();
   await page.goto("/app/applications/" + issued.id);
   await page

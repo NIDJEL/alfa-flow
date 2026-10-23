@@ -14,6 +14,7 @@
     "test:contract": "node scripts/contract.mjs"
   },
   "dependencies": {
+    "@fontsource/geologica": "5.2.6",
     "@fontsource/onest": "5.2.6",
     "@hookform/resolvers": "5.2.1",
     "@radix-ui/react-slot": "1.2.3",

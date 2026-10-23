@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -38,6 +38,7 @@ export function Wizard() {
     defaultValues: { amount: 1000000, term: 24, consent: false },
   });
   const draftId = search.get("draft");
+  const hydratedDraft = useRef("");
   const existing = useQuery({
     queryKey: ["resume-draft", draftId],
     queryFn: () => api<Application>("/applications/" + draftId),
@@ -45,7 +46,8 @@ export function Wizard() {
   });
   const reset = form.reset;
   useEffect(() => {
-    if (existing.data) {
+    if (existing.data && hydratedDraft.current !== existing.data.id) {
+      hydratedDraft.current = existing.data.id;
       setDraft(existing.data);
       reset({
         amount: existing.data.params.amount_kopeks / 100,
@@ -54,13 +56,35 @@ export function Wizard() {
       });
     }
   }, [existing.data, reset]);
-  if (company.isPending || products.isPending) return <Loading />;
-  if (company.error || products.error)
-    return <ErrorBox error={company.error || products.error} />;
+  if (
+    company.isPending ||
+    products.isPending ||
+    (draftId && existing.isPending)
+  )
+    return <Loading />;
+  if (company.error || products.error || existing.error)
+    return (
+      <ErrorBox error={company.error || products.error || existing.error} />
+    );
+  if (existing.data && existing.data.status !== "draft") {
+    return (
+      <div className="panel">
+        <h2>Заявка уже отправлена</h2>
+        <p>Изменить сохранённый черновик больше нельзя.</p>
+        <Button
+          onClick={() => navigate("/app/applications/" + existing.data!.id)}
+        >
+          Открыть актуальную заявку
+        </Button>
+      </div>
+    );
+  }
   const c = company.data!;
   const p =
-    products.data!.find((p) => p.id === search.get("product")) ||
-    products.data![0];
+    products.data!.find(
+      (p) =>
+        p.id === (existing.data?.params.product_id || search.get("product")),
+    ) || products.data![0];
   const values = form.watch();
   const params = (): Params => ({
     product_id: p.id,
@@ -105,7 +129,13 @@ export function Wizard() {
     setBusy(true);
     try {
       const d = await save();
-      if (d) setStep(step + 1);
+      if (d) {
+        navigate(
+          `/app/applications/new?draft=${d.id}&product=${d.params.product_id}`,
+          { replace: true },
+        );
+        setStep(step + 1);
+      }
     } catch (e) {
       setError(e);
     } finally {
@@ -126,6 +156,7 @@ export function Wizard() {
   }
   async function addDocument() {
     if (!draft) return;
+    setError(undefined);
     setBusy(true);
     try {
       const d = await api<Application>(
@@ -183,6 +214,7 @@ export function Wizard() {
             {["Параметры", "Данные и документы", "Проверка"].map((s, i) => (
               <div
                 key={s}
+                aria-current={step === i ? "step" : undefined}
                 className={step === i ? "current" : step > i ? "complete" : ""}
               >
                 <span>{step > i ? <Check size={15} /> : i + 1}</span>

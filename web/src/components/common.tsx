@@ -156,6 +156,15 @@ export function CashflowChart({ forecast }: { forecast: Forecast }) {
         )}
         <span className="muted">Демо · ₽</span>
       </div>
+      {forecast.cash_gap_date && (
+        <div className="chart-alert" role="note">
+          <span className="chart-alert-marker" aria-hidden="true" />
+          <span>
+            Возможный разрыв{" "}
+            <strong>{shortDate(forecast.cash_gap_date)}</strong>
+          </span>
+        </div>
+      )}
       <div className="chart">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
@@ -198,12 +207,6 @@ export function CashflowChart({ forecast }: { forecast: Forecast }) {
                 x={forecast.cash_gap_date}
                 stroke="var(--accent-action)"
                 strokeDasharray="3 3"
-                label={{
-                  value: "Разрыв",
-                  position: "insideTopRight",
-                  fontSize: 11,
-                  fill: "var(--accent-action)",
-                }}
               />
             )}
             <Line
